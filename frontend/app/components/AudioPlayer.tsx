@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import Waveform from "./Waveform";
 import { audioUrl } from "../../lib/api";
 import { fmtDate, fmtDuration } from "../../lib/format";
 import type { Generation } from "../../lib/types";
@@ -9,6 +10,23 @@ function trackSeed(track: Generation): number | undefined {
   if (typeof track.seed === "number") return track.seed;
   const fromParams = track.parameters?.seed;
   return typeof fromParams === "number" ? fromParams : undefined;
+}
+
+function computePeaks(buffer: AudioBuffer, columns = 500): number[] {
+  const data = buffer.getChannelData(0);
+  const block = Math.max(1, Math.floor(data.length / columns));
+  const peaks: number[] = [];
+  for (let i = 0; i < columns; i++) {
+    const start = i * block;
+    let max = 0;
+    for (let j = 0; j < block; j++) {
+      const v = Math.abs(data[start + j] || 0);
+      if (v > max) max = v;
+    }
+    peaks.push(max);
+  }
+  const norm = Math.max(...peaks) || 1;
+  return peaks.map((v) => v / norm);
 }
 
 export default function AudioPlayer({
@@ -26,17 +44,62 @@ export default function AudioPlayer({
 }) {
   const audioRef = useRef<HTMLAudioElement>(null);
   const [copied, setCopied] = useState(false);
+  const [src, setSrc] = useState<string | null>(null);
+  const [peaks, setPeaks] = useState<number[] | null>(null);
+  const [analyzing, setAnalyzing] = useState(false);
 
-  // Reload + attempt autoplay whenever the selected track changes.
+  // Fetch the audio once, decode it for the waveform, and reuse the blob for
+  // playback (avoids downloading the file twice).
+  useEffect(() => {
+    if (!track) {
+      setSrc(null);
+      setPeaks(null);
+      return;
+    }
+    let cancelled = false;
+    let blobUrl: string | null = null;
+    setPeaks(null);
+    setAnalyzing(true);
+
+    (async () => {
+      try {
+        const res = await fetch(audioUrl(track));
+        const buf = await res.arrayBuffer();
+        if (cancelled) return;
+        blobUrl = URL.createObjectURL(new Blob([buf], { type: "audio/wav" }));
+        setSrc(blobUrl);
+        const Ctx = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
+        const ctx = new Ctx();
+        const decoded = await ctx.decodeAudioData(buf);
+        await ctx.close();
+        if (!cancelled) setPeaks(computePeaks(decoded));
+      } catch {
+        // Fallback: stream directly from the server (no waveform).
+        if (!cancelled) {
+          setSrc(audioUrl(track));
+          setPeaks(null);
+        }
+      } finally {
+        if (!cancelled) setAnalyzing(false);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+      if (blobUrl) URL.revokeObjectURL(blobUrl);
+    };
+  }, [track?.id]);
+
+  // Load + attempt autoplay when the source is ready.
   useEffect(() => {
     const el = audioRef.current;
-    if (el && track) {
+    if (el && src) {
       el.load();
       el.play().catch(() => {
         /* autoplay may be blocked; the user can press play */
       });
     }
-  }, [track?.id]);
+  }, [src]);
 
   if (!track) {
     return (
@@ -69,9 +132,11 @@ export default function AudioPlayer({
         {seed !== undefined ? ` · seed ${seed}` : ""}
       </div>
 
+      <Waveform peaks={peaks} audioRef={audioRef} loading={analyzing} />
+
       <audio
         ref={audioRef}
-        src={audioUrl(track)}
+        src={src ?? undefined}
         controls
         loop={loop}
         preload="auto"

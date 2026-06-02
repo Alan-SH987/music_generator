@@ -505,3 +505,104 @@ input[type="number"] {
     transform: translate(-50%, 8px);
   }
 }
+
+/* Waveform */
+.waveform-wrap {
+  position: relative;
+  margin: 6px 0 8px;
+}
+.waveform {
+  display: block;
+  width: 100%;
+  height: 64px;
+  background: var(--bg-soft);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  cursor: pointer;
+}
+.waveform-wrap.is-loading .waveform {
+  opacity: 0.6;
+}
+.waveform-hint {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-size: 12px;
+  color: var(--muted);
+  pointer-events: none;
+}
+
+/* Top indeterminate progress bar (shown while generating) */
+.topbar-progress {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  z-index: 60;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    var(--accent),
+    var(--accent-2),
+    transparent
+  );
+  background-size: 35% 100%;
+  background-repeat: no-repeat;
+  animation: topbar-slide 1.1s ease-in-out infinite;
+}
+@keyframes topbar-slide {
+  0% {
+    background-position: -35% 0;
+  }
+  100% {
+    background-position: 135% 0;
+  }
+}
+
+/* Dismissible alert layout (adds to the base .alert styles above) */
+.alert {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+.alert-dismiss {
+  background: none;
+  border: none;
+  color: var(--warn);
+  cursor: pointer;
+  font-size: 14px;
+  line-height: 1;
+  flex: none;
+  opacity: 0.8;
+}
+.alert-dismiss:hover {
+  opacity: 1;
+}
+
+/* Keyboard focus accessibility */
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+/* Mobile */
+@media (max-width: 600px) {
+  .container {
+    padding: 20px 14px 48px;
+  }
+  .header h1 {
+    font-size: 21px;
+  }
+  .card {
+    padding: 16px;
+  }
+  .scene-grid {
+    grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
+  }
+  .regen-row .btn {
+    min-width: 100%;
+  }
+}

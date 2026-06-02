@@ -161,6 +161,7 @@ export default function Page() {
 
   return (
     <main className="container">
+      {loading ? <div className="topbar-progress" aria-hidden /> : null}
       <header className="header">
         <div>
           <h1>🎵 Royalty-Free Music Generator</h1>
@@ -176,7 +177,18 @@ export default function Page() {
         </span>
       </header>
 
-      {error ? <div className="alert">{error}</div> : null}
+      {error ? (
+        <div className="alert">
+          <span>{error}</span>
+          <button
+            className="alert-dismiss"
+            onClick={() => setError(null)}
+            aria-label="Dismiss"
+          >
+            ✕
+          </button>
+        </div>
+      ) : null}
 
       <div className="grid">
         {/* Left column: create + play */}
