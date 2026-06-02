@@ -1,0 +1,39 @@
+# One-command local stack:  docker compose up --build
+# Frontend -> http://localhost:3000   |   Backend -> http://localhost:8000
+#
+# The browser runs on the host, so the frontend is built to call the backend at
+# the host-mapped port (http://localhost:8000), not the compose-internal name.
+
+services:
+  backend:
+    build: ./backend
+    ports:
+      - "8000:8000"
+    environment:
+      MUSICGEN_DEFAULT_PROVIDER: mock
+    volumes:
+      - backend-storage:/app/storage
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://localhost:8000/api/health').status==200 else 1)"
+      interval: 10s
+      timeout: 3s
+      retries: 5
+      start_period: 5s
+
+  frontend:
+    build:
+      context: ./frontend
+      args:
+        NEXT_PUBLIC_API_BASE: http://localhost:8000
+    ports:
+      - "3000:3000"
+    depends_on:
+      backend:
+        condition: service_healthy
+
+volumes:
+  backend-storage:
